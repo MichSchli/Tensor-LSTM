@@ -1,5 +1,4 @@
 # Tensor-LSTM
-
 This repository contains an implementation of the Tensor-LSTM dependency parser used in *arxiv link here*. The parser as described in the paper can be run on any UNIX system with:
 
 ```
