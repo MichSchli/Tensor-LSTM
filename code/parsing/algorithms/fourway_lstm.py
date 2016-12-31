@@ -25,10 +25,6 @@ class FourwayLstm(superclass.RNN):
     def __init__(self, optimizer_config_path):
         n_layers = 4
 
-        # Idea: Add a nonlinear tanh layer to the input.
-        # Intuition: "Interpret this vector before comparing it to others."
-
-        #For now, linear layer projecting to larger space to match network:
         self.input_lstm_layer = network_ops.fourdirectional_lstm_layer('input_layer_', self.input_dimension * 2 + 1, self.hidden_dimension)
 
         self.lstm_layers = [network_ops.fourdirectional_lstm_layer('layer_'+str(l),
@@ -37,7 +33,7 @@ class FourwayLstm(superclass.RNN):
         
         #self.first_lstm_layer = network_ops.fourdirectional_lstm_layer('first_layer', self.hidden_dimension * 4, self.hidden_dimension)
         #self.second_lstm_layer = network_ops.fourdirectional_lstm_layer('second_layer', self.hidden_dimension * 4, self.hidden_dimension)
-        self.output_convolution = network_ops.linear_tensor_convolution_layer('output_layer', self.hidden_dimension * 4, 1)
+        self.output_convolution = network_ops.linear_layer_on_tensor('output_layer', self.hidden_dimension * 4, 1)
         
         self.layers = [self.input_lstm_layer] + self.lstm_layers + [self.output_convolution]
 
@@ -108,7 +104,7 @@ class FourwayLstm(superclass.RNN):
             full_matrix = 0.5 * full_matrix
         
         
-        final_matrix = self.output_convolution.function(full_matrix)
+        final_matrix = self.output_convolution.function(full_matrix)[:,:,0]
 
         return T.nnet.softmax(final_matrix)
 
