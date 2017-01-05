@@ -17,6 +17,7 @@ class FourwayLstm(superclass.RNN):
 
     hidden_dimension = 200
     input_dimension = 64
+    loss = "cross-entropy"
     
     '''
     Initialization:
@@ -63,7 +64,11 @@ class FourwayLstm(superclass.RNN):
    
     def theano_sentence_loss(self, Vs, gold):
         preds = self.theano_sentence_prediction(Vs)
-        losses = T.nnet.categorical_crossentropy(preds, gold)
+        if self.loss == "cross-entropy":
+            losses = T.nnet.categorical_crossentropy(preds, gold)
+        else:
+            diff = preds - gold
+            losses = diff * diff
         return T.sum(losses)
 
     

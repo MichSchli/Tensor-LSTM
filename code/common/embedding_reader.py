@@ -2,10 +2,14 @@ import numpy as np
 import sys
 import pickle
 
+"""
+Abstract class reading word embeddings from differently formatted files.
+"""
 class EmbeddingReader():
 
     always_lower = False
     dim = None
+    d = {}
     
     def __getitem__(self, item):
         if self.always_lower:
@@ -17,10 +21,12 @@ class EmbeddingReader():
             return np.zeros(self.dim, dtype=np.float32)
 
 
+"""
+Glove format:
+"""
 class GloveReader(EmbeddingReader):
 
     glove_path = 'misc/glove.6B/glove.6B.50d.txt'
-    d = {}
     dim=50
     
     def __init__(self):
@@ -30,10 +36,30 @@ class GloveReader(EmbeddingReader):
 
             self.d[parts[0]] = np.array([float(x) for x in parts[1:]])
 
-class AndersEmbeddingReader(EmbeddingReader):
 
-    embedding_path = 'misc/europarl_multi-sid-pmi_submitted.vecs'
-    d = {}
+"""
+Polyglot Format:
+"""
+class PolyglotReader(EmbeddingReader):
+
+    dim=64
+    
+    def __init__(self, language='en'):
+        print("Loading polyglot...", file=sys.stderr)
+        polyglot_path = 'misc/Polyglot/polyglot-' + language + '.pkl'
+
+        f = open(polyglot_path, 'rb')
+        words, vecs = pickle.load(f, encoding='latin1')
+
+        self.d = dict(zip(words, vecs))
+
+
+"""
+Multilingual embeddings following the format of Levy et al., 2016.
+"""     
+class MultilingualEmbeddingReader(EmbeddingReader):
+
+    embedding_path = 'misc/bible_multi-sid-pmi_submitted.vecs'
     dim=500
     
     always_lower = True
@@ -53,22 +79,3 @@ class AndersEmbeddingReader(EmbeddingReader):
 
             self.d[word] = np.array([float(x) for x in parts[1:]])
             
-        
-            
-class PolyglotReader(EmbeddingReader):
-
-    dim=64
-    polyglot_path = 'misc/Polyglot/polyglot-en.pkl'
-    d = {}
-
-    def __init__(self):
-        print("Loading polyglot...", file=sys.stderr)
-
-        f = open(self.polyglot_path, 'rb')
-        words, vecs = pickle.load(f, encoding='latin1')
-
-        self.d = dict(zip(words, vecs))
-        
-if __name__ == '__main__':
-    gr = PolyglotReader()
-    print(gr['word'].shape)
