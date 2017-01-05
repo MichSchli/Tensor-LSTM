@@ -3,7 +3,7 @@ import argparse
 
 io = imp.load_source('io', 'code/common/io.py')
 
-parser = argparse.ArgumentParser(description="Convert a reference-to-head formt to a graph-format.")
+parser = argparse.ArgumentParser(description="Convert a reference-to-head format to a graph-format.")
 parser.add_argument("--infile", help="Input filepath (CoNLL format).", required=True)
 parser.add_argument("--outfile", help="Output filepath (CoNLL format).", required=True)
 args = parser.parse_args()

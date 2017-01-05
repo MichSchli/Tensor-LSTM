@@ -24,6 +24,12 @@ if [ -z "$4" ]
       exit
 fi
 
+if [ -z "$5" ]
+   then
+      echo "ERROR: Loss not specified."
+      exit
+fi
+
 INPUT_FILE=$1
 FEATURE_FILE='data/train.feature'
 GRAPH_FILE='data/train.graph'
@@ -39,13 +45,13 @@ TEST_PRED_FILE='data/test.pred'
 TEST_DEC_FILE='data/test.dec'
 
 ALGORITHM=fourway_lstm
-FEATURE_MODE=sentence
-
 LANGUAGE=$4
+LOSS=$5
 
 MODEL_PATH=models/$ALGORITHM'.model'
 
 PYTHON_COMMAND="python3"
+DEVICE="cpu"
 
 $PYTHON_COMMAND code/processing/ref_to_graph.py --infile $INPUT_FILE --outfile $GRAPH_FILE
 $PYTHON_COMMAND code/processing/ref_to_graph.py --infile $DEV_INPUT_FILE --outfile $DEV_GRAPH_FILE
@@ -53,8 +59,10 @@ $PYTHON_COMMAND code/processing/ref_to_graph.py --infile $DEV_INPUT_FILE --outfi
 $PYTHON_COMMAND code/featurization/featurize.py --infile $INPUT_FILE --outfile $FEATURE_FILE --language $LANGUAGE
 $PYTHON_COMMAND code/featurization/featurize.py --infile $DEV_INPUT_FILE --outfile $DEV_FEATURE_FILE --language $LANGUAGE
 
+THEANO_FLAGS='floatX=float32,warn_float64=raise,optimizer_including=local_remove_all_assert,device='$DEVICE
+
 #TRAIN:
-THEANO_FLAGS='floatX=float32,warn_float64=raise,optimizer_including=local_remove_all_assert' $PYTHON_COMMAND code/parsing/train.py --features $FEATURE_FILE --sentences $GRAPH_FILE --dev_features $DEV_FEATURE_FILE --dev_sentences $DEV_GRAPH_FILE --model_path $MODEL_PATH --algorithm $ALGORITHM --feature_mode $FEATURE_MODE
+$PYTHON_COMMAND code/parsing/train.py --features $FEATURE_FILE --sentences $GRAPH_FILE --dev_features $DEV_FEATURE_FILE --dev_sentences $DEV_GRAPH_FILE --model_path $MODEL_PATH --algorithm $ALGORITHM --loss $LOSS
 
 rm -rf $GRAPH_FILE
 rm -rf $DEV_GRAPH_FILE
@@ -65,7 +73,7 @@ $PYTHON_COMMAND code/processing/ref_to_graph.py --infile $TEST_INPUT_FILE --outf
 $PYTHON_COMMAND code/featurization/featurize.py --infile $TEST_INPUT_FILE --outfile $TEST_FEATURE_FILE --language $LANGUAGE
 
 #Predict:
-THEANO_FLAGS='floatX=float32,warn_float64=raise,optimizer_including=local_remove_all_assert' $PYTHON_COMMAND code/parsing/predict.py --features $TEST_FEATURE_FILE --sentences $TEST_GRAPH_FILE --model_path $MODEL_PATH --algorithm $ALGORITHM --outfile $TEST_PRED_FILE --feature_mode $FEATURE_MODE
+$PYTHON_COMMAND code/parsing/predict.py --features $TEST_FEATURE_FILE --sentences $TEST_GRAPH_FILE --model_path $MODEL_PATH --algorithm $ALGORITHM --outfile $TEST_PRED_FILE
 
 #Decode:
 $PYTHON_COMMAND code/decoding/decode.py --infile $TEST_PRED_FILE --outfile $TEST_DEC_FILE --verbose

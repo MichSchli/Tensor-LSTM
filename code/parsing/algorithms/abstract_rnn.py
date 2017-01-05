@@ -67,20 +67,11 @@ class RNN():
             l.set_training(False)
         
         Sentence = T.fmatrix('Sentence')
-        Characters = T.ftensor3('Characters')
-        WordLengths = T.ivector('WordLengths')
         
         weight_list = self.get_theano_weight_list()
 
-        if self.feature_mode == 'character':
-            result = self.theano_sentence_prediction(Characters, WordLengths)
-            input_list = [Characters, WordLengths] + list(weight_list)
-        elif self.feature_mode == 'sentence':
-            result = self.theano_sentence_prediction(Sentence)
-            input_list = [Sentence] + list(weight_list)
-        elif self.feature_mode == 'both':
-            result = self.theano_sentence_prediction(Sentence, Characters, WordLengths)
-            input_list = [Sentence, Characters, WordLengths] + list(weight_list)
+        result = self.theano_sentence_prediction(Sentence)
+        input_list = [Sentence] + list(weight_list)
 
         cgraph = theano.function(inputs=input_list, outputs=result, mode='FAST_RUN', allow_input_downcast=True)
 
@@ -100,22 +91,13 @@ class RNN():
             l.set_training(False)
 
         Sentence = T.fmatrix('Sentence')
-        Characters = T.ftensor3('Characters')
-        WordLengths = T.ivector('WordLengths')
         GoldPredictions = T.fmatrix('GoldPredictions')
         
         weight_list = self.get_theano_weight_list()
 
-        if self.feature_mode == 'character':
-            result = self.theano_sentence_loss(Characters, WordLengths, GoldPredictions)
-            input_list = [Characters, WordLengths, GoldPredictions] + list(weight_list)
-        elif self.feature_mode == 'sentence':
-            result = self.theano_sentence_loss(Sentence, GoldPredictions)
-            input_list = [Sentence, GoldPredictions] + list(weight_list)
-        elif self.feature_mode == 'both':
-            result = self.theano_sentence_loss(Sentence, Characters, WordLengths, GoldPredictions)
-            input_list = [Sentence, Characters, WordLengths, GoldPredictions] + list(weight_list)
-
+        result = self.theano_sentence_loss(Sentence, GoldPredictions)
+        input_list = [Sentence, GoldPredictions] + list(weight_list)
+        
         cgraph = theano.function(inputs=input_list, outputs=result, mode='FAST_RUN', allow_input_downcast=True)
 
         print("Done building graph.")
@@ -134,21 +116,12 @@ class RNN():
             l.set_training(True)
 
         Sentence = T.fmatrix('Sentence')
-        Characters = T.ftensor3('Characters')
-        WordLengths = T.ivector('WordLengths')
         GoldPredictions = T.fmatrix('GoldPredictions')
         
         weight_list = self.get_theano_weight_list()
 
-        if self.feature_mode == 'character':
-            loss = self.theano_sentence_loss(Characters, WordLengths, GoldPredictions)
-            input_list = [Characters, WordLengths, GoldPredictions] + list(weight_list)
-        elif self.feature_mode == 'sentence':
-            loss = self.theano_sentence_loss(Sentence, GoldPredictions)
-            input_list = [Sentence, GoldPredictions] + list(weight_list)
-        elif self.feature_mode == 'both':
-            loss = self.theano_sentence_loss(Sentence, Characters, WordLengths, GoldPredictions)
-            input_list = [Sentence, Characters, WordLengths, GoldPredictions] + list(weight_list)
+        loss = self.theano_sentence_loss(Sentence, GoldPredictions)
+        input_list = [Sentence, GoldPredictions] + list(weight_list)
             
         grads = T.grad(loss, weight_list)
 
@@ -187,32 +160,9 @@ class RNN():
 
         predict_function = self.build_predict_graph()
         
-        if 'character' in sentences:       
-            sentences['character'] = self.pad_words(sentences['character'])          
-            word_lengths = [np.zeros(len(sentence)) for sentence in sentences['character']]
-
-            for i,sentence in enumerate(sentences['character']):
-                for j,word in enumerate(sentence):
-                    word_lengths[i][j] = len(word)
-
-                word_lengths[i] = word_lengths[i].astype(np.int32)
-        
-        predictions = []
-        if not 'character' in sentences:
-            for i,sentence in enumerate(sentences['sentence']):
-                
-                predictions.append(predict_function(sentence, *self.get_weight_list()))
-                
-        elif not 'sentence' in sentences:
-            for chars, word_length in zip(sentences['character'], word_lengths):
-                predictions.append(predict_function(chars, word_length, *self.get_weight_list()))
-
-        else:
-            for sentence, chars, word_length in zip(sentences['sentence'],
-                                                    sentences['character'],
-                                                    word_lengths):
-                predictions.append(predict_function(sentence, chars, word_length, *self.get_weight_list()))
-
+        for sentence in sentences:
+            predictions.append(predict_function(sentence, *self.get_weight_list()))
+            
         return predictions
 
     '''

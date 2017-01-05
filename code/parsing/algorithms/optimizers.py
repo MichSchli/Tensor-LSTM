@@ -31,63 +31,18 @@ class Optimizer():
         
     def set_training_data(self, sentences, labels):
         self.training_labels = labels
-            
-        if 'character' in sentences:       
-            self.training_sentences['character'] = self.pad_words(sentences['character'])
-          
-            self.training_word_lengths = [np.zeros(len(sentence)) for sentence in sentences['character']]
-
-            for i,sentence in enumerate(sentences['character']):
-                for j,word in enumerate(sentence):
-                    self.training_word_lengths[i][j] = len(word)
-
-                self.training_word_lengths[i] = self.training_word_lengths[i].astype(np.int32)
-
-        if 'sentence' in sentences:       
-            self.training_sentences['sentence'] = sentences['sentence']
-
-
+        self.training_sentences = sentences
 
     def set_development_data(self, sentences, labels):
         self.development_labels = labels
-            
-        if 'character' in sentences:       
-            self.development_sentences['character'] = self.pad_words(sentences['character'])
-          
-            self.development_word_lengths = [np.zeros(len(sentence)) for sentence in sentences['character']]
-
-            for i,sentence in enumerate(sentences['character']):
-                for j,word in enumerate(sentence):
-                    self.development_word_lengths[i][j] = len(word)
-
-                self.development_word_lengths[i] = self.development_word_lengths[i].astype(np.int32)
-
-        if 'sentence' in sentences:       
-            self.development_sentences['sentence'] = sentences['sentence']
-
-
+        self.development_sentences = sentences
         
     def development_loss(self):
         loss = 0
 
-        if not 'character' in self.development_sentences:
-            for sentence, label in zip(self.development_sentences['sentence'],
+        for sentence, label in zip(self.development_sentences,
                                        self.development_labels):
-                loss += self.loss_function(sentence, label, *self.weights)
-                
-
-        elif not 'sentence' in self.development_sentences:
-            for chars, word_lengths, label in zip(self.development_sentences['character'],
-                                                  self.development_word_lengths,
-                                                  self.development_labels):
-                loss += self.loss_function(chars, word_lengths, label, *self.weights)
-
-        else:
-            for sentence, chars, word_lengths, label in zip(self.development_sentences['sentence'],
-                                                            self.development_sentences['character'],
-                                                            self.development_word_lengths,
-                                                            self.development_labels):
-                loss += self.loss_function(sentence, chars, word_lengths, label, *self.weights)
+            loss += self.loss_function(sentence, label, *self.weights)
         
         return loss
     
@@ -183,13 +138,7 @@ class MinibatchOptimizer(Optimizer):
     def update(self):
         self.current_iteration = 1
         
-        if 'sentence' in self.training_sentences:
-            sentence_chunks = self.chunk(self.training_sentences['sentence'])
-
-        if 'character' in self.training_sentences:
-            character_chunks = self.chunk(self.training_sentences['character'])
-            word_length_chunks = self.chunk(self.training_word_lengths)
-
+        sentence_chunks = self.chunk(self.training_sentences)
         label_chunks = self.chunk(self.training_labels)
 
         current_loss = self.development_loss()
@@ -199,38 +148,16 @@ class MinibatchOptimizer(Optimizer):
         
         while(self.current_iteration < self.max_iterations and prev_loss > current_loss):
             prev_loss = current_loss
-            print("Running optimizer at iteration "+str(self.current_iteration)+". Current loss: "+str(prev_loss))
+            print("Running optimizer at epoch "+str(self.current_iteration)+". Current loss: "+str(prev_loss))
             self.current_iteration += 1
 
-            if not 'sentence' in self.training_sentences:
-                for data_batch, word_length_batch, label_batch in zip(character_chunks,
-                                                                      word_length_chunks,
-                                                                      label_chunks):
-                    self.batch_update_c(data_batch, word_length_batch, label_batch)
+            for data_batch, label_batch in zip(sentence_chunks, label_chunks):
+                self.batch_update(data_batch, label_batch)
 
-                    for i, update in enumerate(self.updates):
-                        self.weights[i] += self.updates[i]
-
-            if not 'character' in self.training_sentences:
-                for data_batch, label_batch in zip(sentence_chunks, label_chunks):
-                    self.batch_update_s(data_batch, label_batch)
-
-                    for i, update in enumerate(self.updates):
-                        self.weights[i] += self.updates[i]
-
-            else:
-                for data_batch, char_batch, word_length_batch, label_batch in zip(sentence_chunks,
-                                                                                  character_chunks,
-                                                                                  word_length_chunks,
-                                                                                  label_chunks):
-                    self.batch_update_b(data_batch, char_batch, word_length_batch, label_batch)
-
-                    for i, update in enumerate(self.updates):
-                        self.weights[i] += self.updates[i]
-
+                for i, update in enumerate(self.updates):
+                    self.weights[i] += self.updates[i]
 
             print('')
-            #self.do_update()
 
             current_loss = self.development_loss()
             if prev_loss > current_loss:
@@ -246,18 +173,9 @@ class StochasticGradientDescent(MinibatchOptimizer):
 
         super().initialize()
 
-    def batch_update_s(self, data_batch, label_batch):
+    def batch_update(self, data_batch, label_batch):
         gradients = self.batch_gradients_s(data_batch, label_batch)
         self.__update_from_gradients(gradients)
-    
-    def batch_update_c(self, data_batch, word_length_batch, label_batch):
-        gradients = self.batch_gradients_c(data_batch, word_length_batch, label_batch)
-        self.__update_from_gradients(gradients)
-
-    def batch_update_b(self, data_batch, char_batch, word_length_batch, label_batch):
-        gradients = self.batch_gradients_b(data_batch, char_batch, word_length_batch, label_batch)
-        self.__update_from_gradients(gradients)
-
         
     def __update_from_gradients(self, gradients):
         gradients = self.process_gradients(gradients)
@@ -284,19 +202,10 @@ class AdaDelta(MinibatchOptimizer):
         self.running_average = [np.zeros_like(weight) for weight in self.weights]
 
 
-    def batch_update_s(self, data_batch, label_batch):
+    def batch_update(self, data_batch, label_batch):
         gradients = self.batch_gradients_s(data_batch, label_batch)
         self.__update_from_gradients(gradients)
     
-    def batch_update_c(self, data_batch, word_length_batch, label_batch):
-        gradients = self.batch_gradients_c(data_batch, word_length_batch, label_batch)
-        self.__update_from_gradients(gradients)
-
-    def batch_update_b(self, data_batch, char_batch, word_length_batch, label_batch):
-        gradients = self.batch_gradients_b(data_batch, char_batch, word_length_batch, label_batch)
-        self.__update_from_gradients(gradients)
-
-        
     def __update_from_gradients(self, gradients):
         for i, gradient in enumerate(gradients):
             square_gradient = np.square(gradient)
@@ -328,18 +237,9 @@ class RMSProp(MinibatchOptimizer):
         self.running_average = [np.zeros_like(weight) for weight in self.weights]
 
 
-    def batch_update_s(self, data_batch, label_batch):
+    def batch_update(self, data_batch, label_batch):
         gradients = self.batch_gradients_s(data_batch, label_batch)
         self.__update_from_gradients(gradients)
-    
-    def batch_update_c(self, data_batch, word_length_batch, label_batch):
-        gradients = self.batch_gradients_c(data_batch, word_length_batch, label_batch)
-        self.__update_from_gradients(gradients)
-
-    def batch_update_b(self, data_batch, char_batch, word_length_batch, label_batch):
-        gradients = self.batch_gradients_b(data_batch, char_batch, word_length_batch, label_batch)
-        self.__update_from_gradients(gradients)
-
         
     def __update_from_gradients(self, gradients):
         for i, gradient in enumerate(gradients):
