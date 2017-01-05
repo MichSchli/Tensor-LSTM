@@ -7,4 +7,4 @@ TEST=data/en-ud-dev.conllu
 LANGUAGE=en
 LOSS=cross-entropy
 
-bash complete_test_and_train_pipeline.sh $TRAIN $DEV $TEST $LANGUAGE $LOSS
+bash complete_train_and_test_pipeline.sh $TRAIN $DEV $TEST $LANGUAGE $LOSS
