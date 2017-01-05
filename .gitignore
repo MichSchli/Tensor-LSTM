@@ -4,9 +4,9 @@ __pycache__/
 *$py.class
 
 # Larger files should be kept out
-data/
+*.feat
+*.graph
 models/
-misc/
 
 # C extensions
 *.so
